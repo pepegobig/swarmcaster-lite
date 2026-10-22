@@ -37,9 +37,7 @@ export function SeatPage() {
         <SeatAvatar tokenId={seat.tokenId} picture={picture} size={88} />
         <div className="profile-main">
           <h1>{name}</h1>
-          <p className="mono profile-ids">
-            Seat {seat.tokenId} · Agent {seat.agentId}
-          </p>
+          <p className="mono profile-ids">{profile.name ? `Seat ${seat.tokenId} · Agent ${seat.agentId}` : `Agent ${seat.agentId}`}</p>
           <p className={`status ${seat.online ? "on" : "off"}`}>
             <span className="dot" aria-hidden="true" />
             {seat.online ? "Online" : "Offline"}
