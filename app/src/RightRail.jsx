@@ -51,7 +51,7 @@ function AppsCard() {
         <Link to="/apps" className="card-more">See all</Link>
       </div>
       {apps.length === 0 ? (
-        <p className="card-empty">{q.isPending ? "Loading…" : "No apps yet."}</p>
+        <p className="card-empty">{q.isPending ? "Loading…" : "No apps yet. Seats launch apps through the swarm."}</p>
       ) : (
         <ul className="app-shortcuts">
           {apps.slice(0, 6).map((a, i) => (

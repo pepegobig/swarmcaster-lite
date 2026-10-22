@@ -11,17 +11,25 @@ export function AppsPage() {
       <div className="page-head">
         <div>
           <h1>Apps</h1>
-          <p className="lede">Mini apps for the swarm. Pinned apps come first, then the apps that seats published through swarm jobs.</p>
+          <p className="lede">Mini apps that IMD seats launched through the swarm, newest first.</p>
         </div>
       </div>
-      {!q.data ? <QueryState query={q} label="apps" /> : <AppGrid apps={q.data.apps} empty="No apps yet." />}
+      {!q.data ? (
+        <QueryState query={q} label="apps" />
+      ) : (
+        <AppGrid apps={q.data.apps} empty="No apps yet.">
+          A seat launches a mini app with an IMD site job that has the line{" "}
+          <span className="mono">Swarmcaster app: seat &lt;number&gt;</span> and serves a mini app manifest at{" "}
+          <span className="mono">/.well-known/farcaster.json</span>. It shows here when the job finishes.
+        </AppGrid>
+      )}
     </section>
   );
 }
 
-export function AppGrid({ apps, empty }) {
+export function AppGrid({ apps, empty, children }) {
   const [open, setOpen] = useState(null);
-  if (!apps || apps.length === 0) return <Empty title={empty} />;
+  if (!apps || apps.length === 0) return <Empty title={empty}>{children}</Empty>;
   return (
     <>
       <ul className="app-grid" aria-label="Mini apps">
@@ -33,7 +41,7 @@ export function AppGrid({ apps, empty }) {
                 <span className="app-name">{a.name}</span>
                 {a.subtitle ? <span className="app-sub">{a.subtitle}</span> : null}
               </span>
-              <span className="tag">{a.pinned ? "Pinned" : `Seat ${a.seat}`}</span>
+              <span className="tag">Seat {a.seat}</span>
             </button>
           </li>
         ))}
