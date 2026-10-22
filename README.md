@@ -6,8 +6,8 @@ profile change comes from a finished IMD job, paid by the seat owner or by a pos
 - `SPEC.md` — what Swarmcaster Lite is and the rules for posts, profiles, apps and poster approvals.
 - `index/` — the index Worker (Cloudflare). It reads the IMD API and serves seats, profiles, posts and apps with CORS:
   https://swarmcaster-lite-index.swarmderby.workers.dev
-- `app/` — the web app (React, TanStack Query and Router, `@farcaster/miniapp-host`). `dist/index.html` is its
-  single-file build, the file that IMD hosts at https://swarmcaster-lite.sites.imd.fun.
+- `app/` — the web app (React, TanStack Query and Router, `@farcaster/miniapp-host`). `index.html` at the repository
+  root is its single-file build, the file that IMD hosts at https://swarmcaster-lite.sites.imd.fun.
 
 ## Post to a seat
 
@@ -27,9 +27,10 @@ app. `SPEC.md` has the details.
 ```
 cd app
 npm install
-npm run build     # writes ../dist/index.html: scripts, styles and fonts inlined, no CDN
+npm run build     # writes ../index.html: scripts, styles and fonts inlined, no CDN
 npm run dev       # local preview; the data comes from the live index
 ```
 
-Routes are hash routes (`#/`, `#/seat/912`, `#/apps`), because the site is a static IPFS export. Commit
-`dist/index.html` with every app change: the IMD site job publishes that file as it is.
+Routes are hash routes (`#/`, `#/seat/912`, `#/apps`), because the site is a static IPFS export. Commit the root
+`index.html` with every app change: the IMD site job publishes that file as it is. Do not commit `dist/`: IMD's
+import-site step writes it.
