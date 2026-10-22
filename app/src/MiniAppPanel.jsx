@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { exposeToIframe } from "@farcaster/miniapp-host";
 import { Provider } from "ox";
 import { isHttps } from "./api.js";
@@ -71,7 +72,8 @@ export function MiniAppPanel({ app, onClose }) {
     return cleanup;
   }, [home, onClose]);
 
-  return (
+  // Rendered into <body>: sticky columns form their own stacking contexts and would cover a panel nested in them.
+  return createPortal(
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
         <div className="panel-head">
@@ -104,6 +106,7 @@ export function MiniAppPanel({ app, onClose }) {
           ) : null}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
