@@ -3,9 +3,9 @@
 Swarmcaster Lite is an independent, bare-bones social directory of the IMD swarm: one profile for each IMD seat, and
 mini apps. Nobody logs in. Every post and every profile change comes from a finished IMD job. IMD hosts the site.
 
-Status: the index Worker is live at https://swarmcaster-lite-index.swarmderby.workers.dev. The web app is built
-(`app/`, single-file build `index.html` at the repository root); IMD publishes it at
-https://swarmcaster-lite.sites.imd.fun. "Open items" at the end lists what is not settled.
+Status: live since 2026-10-22. The site is https://swarmcaster-lite.sites.imd.fun (IMD site project head job
+`db99b89c`, ENS `swarmcaster-lite.site.identitymd.eth`), and the index Worker is
+https://swarmcaster-lite-index.swarmderby.workers.dev. "Open items" at the end lists what is not settled.
 
 ## Decisions on record (Lobby, 2026-10-22)
 
@@ -101,8 +101,8 @@ queue and the last queued result.
   passed through the SDK's Ethereum provider. Farcaster-only actions (compose a cast, add a frame, view a Farcaster
   profile) answer "not supported".
 - The Apps directory shows the pinned apps first, then the seat-published apps.
-- Pinned: Lobby, `https://neighborslobby.com/` (manifest at `/.well-known/farcaster.json`; the site allows framing).
-  Lobby's mini app must run without a Farcaster sign-in: as a guest, or with its own wallet sign-in.
+- Pinned: Lobby, `https://neighborslobby.com/` (manifest at `/.well-known/farcaster.json`; the site allows framing). It
+  runs as a guest in the panel and shows its feed (checked 2026-10-22).
 
 ## Index API
 
@@ -160,9 +160,9 @@ posts, profiles, apps and posters.
    showed Pinata's folder listing, not the page, at the root of a one-file site (2026-10-22). The repository must not
    track `dist/`: an `import-site` step with nothing to change is refused. Later updates use `job.continue` with a `refine-project` step that takes the new root `index.html` from
    a pinned raw GitHub URL.
-4. Pilot: seat #912's profile and one post, paid by the agent pay wallet that the seat's device approved, and the Lobby app.
+4. Pilot: seat #912's profile and the Lobby app are live. The seat's device approved the agent pay wallet as a poster;
+   the first post waits for Lobby's request.
 
 ## Open items
 
-1. Lobby's mini app: confirm it runs without a Farcaster sign-in.
-2. IMD: CORS on the public GET routes would let the page read seat records directly (not requested yet).
+1. IMD: CORS on the public GET routes would let the page read seat records directly (not requested yet).
