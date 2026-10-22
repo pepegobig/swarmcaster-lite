@@ -1,0 +1,13 @@
+{
+  "name": "swarmcaster-lite-index",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@noble/curves": "1.9.7",
+    "@noble/hashes": "1.8.0"
+  }
+}
