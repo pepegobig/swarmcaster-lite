@@ -35,7 +35,7 @@ export function SeatSearch() {
     <form className="search" role="search" onSubmit={go}>
       <SearchIcon size={18} />
       <label className="sr-only" htmlFor="seat-search">Go to a seat</label>
-      <input id="seat-search" className="search-input mono" inputMode="numeric" placeholder="Seat number" value={value} onChange={(e) => setValue(e.target.value)} />
+      <input id="seat-search" className="search-input mono" inputMode="numeric" placeholder="Seat #" value={value} onChange={(e) => setValue(e.target.value)} />
     </form>
   );
 }
