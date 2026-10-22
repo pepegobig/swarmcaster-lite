@@ -5,10 +5,11 @@
 //   GET  /apps             pinned mini apps first, then the apps seats published
 //   GET  /jobs/:id         whether an IMD job counts for a seat, and why not
 //   GET  /status           index health
-//   POST /posters          { seat, wallet, signature, revoke? }: the seat owner approves or revokes a poster wallet
+//   POST /posters          { seat, wallet, signature, deviceKey?, revoke? }: the seat owner, or the seat's enrolled
+//                          worker device, approves or revokes a poster wallet
 // A cron every 10 minutes finds IMD jobs with a "Swarmcaster post|profile|app: seat N" line and records the finished ones.
 import { DurableObject } from "cloudflare:workers";
-import { approvalMessage, decide, isAddress, parseJob, pickFiles, pickManifest, recoverSigner, revokeMessage } from "./rules.js";
+import { approvalMessage, decide, isAddress, isDeviceKey, parseJob, pickFiles, pickManifest, recoverSigner, revokeMessage, verifyDevice } from "./rules.js";
 
 const IMD = "https://api.imd.fun";
 const PINNED = [{ manifestUrl: "https://neighborslobby.com/.well-known/farcaster.json", homeUrl: "https://neighborslobby.com/" }];
@@ -34,7 +35,10 @@ export class SwarmIndex extends DurableObject {
         status TEXT NOT NULL, reason TEXT, paid_by TEXT, created_at TEXT, data TEXT, updated_at INTEGER NOT NULL);
       CREATE INDEX IF NOT EXISTS jobs_seat ON jobs (seat, status);
       CREATE TABLE IF NOT EXISTS posters (seat INTEGER NOT NULL, wallet TEXT NOT NULL, owner TEXT NOT NULL,
-        signature TEXT NOT NULL, signed_at INTEGER NOT NULL, PRIMARY KEY (seat, wallet));`);
+        signature TEXT NOT NULL, signed_at INTEGER NOT NULL, via TEXT, PRIMARY KEY (seat, wallet));`);
+    try {
+      this.sql.exec("ALTER TABLE posters ADD COLUMN via TEXT"); // tables made before device approvals
+    } catch {}
     this.seatCache = new Map(); // tokenId -> { at, body }
     this.base = env.IMD_API || IMD; // IMD_API points a local test run at a mock
   }
@@ -60,12 +64,21 @@ export class SwarmIndex extends DurableObject {
     return next;
   }
 
+  // The IMD seat record, fresh for SEAT_TTL_MS. When IMD is busy, the last good copy is served (memory, then storage).
   async seatRecord(tokenId) {
     const hit = this.seatCache.get(tokenId);
     if (hit && Date.now() - hit.at < SEAT_TTL_MS) return hit.body;
-    const body = await this.imd(`/seats/${tokenId}?work=30&reviews=0&collaborators=0`);
+    let body;
+    try {
+      body = await this.imd(`/seats/${tokenId}?work=30&reviews=0&collaborators=0`);
+    } catch (e) {
+      const stale = hit ? hit.body : this.kvGet(`seat:${tokenId}`);
+      if (stale) return stale;
+      throw e;
+    }
     if (this.seatCache.size > 2000) this.seatCache.clear();
     this.seatCache.set(tokenId, { at: Date.now(), body });
+    if (body) this.kvSet(`seat:${tokenId}`, body);
     return body;
   }
 
@@ -88,7 +101,7 @@ export class SwarmIndex extends DurableObject {
   }
 
   posters(seat) {
-    return this.sql.exec("SELECT wallet, owner, signed_at FROM posters WHERE seat = ?", seat).toArray();
+    return this.sql.exec("SELECT wallet, owner, signed_at, via FROM posters WHERE seat = ?", seat).toArray();
   }
 
   async getSeats() {
@@ -114,7 +127,7 @@ export class SwarmIndex extends DurableObject {
       profile: this.profile(seat),
       posts: this.accepted(seat, "post"),
       apps: this.accepted(seat, "app"),
-      posters: this.posters(seat).map((p) => ({ wallet: p.wallet, approvedAt: new Date(p.signed_at).toISOString() })),
+      posters: this.posters(seat).map((p) => ({ wallet: p.wallet, approvedBy: p.via || "owner", approvedAt: new Date(p.signed_at).toISOString() })),
     };
   }
 
@@ -145,23 +158,34 @@ export class SwarmIndex extends DurableObject {
     };
   }
 
-  async setPoster(seat, wallet, signature, revoke) {
+  // The owner signs with its wallet (personal_sign), or the seat's worker signs with its IMD device key: IMD enrolls a
+  // device for a seat only after the owner signs the pairing, and /workers/:deviceKey/standing names that seat.
+  async setPoster(seat, wallet, signature, revoke, deviceKey) {
     const record = await this.seatRecord(String(seat));
     if (!record || !isAddress(record.owner)) return { status: 404, body: { error: "unknown_seat" } };
     const message = revoke ? revokeMessage(seat, wallet) : approvalMessage(seat, wallet);
-    let signer;
-    try {
-      signer = recoverSigner(message, signature);
-    } catch {
-      return { status: 400, body: { error: "bad_signature", message } };
-    }
     const owner = record.owner.toLowerCase();
-    if (signer !== owner) return { status: 403, body: { error: "not_owner", message } };
+    let via = "owner";
+    if (deviceKey) {
+      const standing = await this.imd(`/workers/${deviceKey}/standing?queue=0`);
+      const e = standing && standing.enrollment;
+      if (!e || e.status !== "active" || String(e.tokenId) !== String(seat)) return { status: 403, body: { error: "not_seat_device", message } };
+      if (!verifyDevice(message, signature, deviceKey)) return { status: 400, body: { error: "bad_signature", message } };
+      via = "device";
+    } else {
+      let signer;
+      try {
+        signer = recoverSigner(message, signature);
+      } catch {
+        return { status: 400, body: { error: "bad_signature", message } };
+      }
+      if (signer !== owner) return { status: 403, body: { error: "not_owner", message } };
+    }
     if (revoke) this.sql.exec("DELETE FROM posters WHERE seat = ? AND wallet = ?", seat, wallet.toLowerCase());
     else
       this.sql.exec(
-        "INSERT INTO posters (seat, wallet, owner, signature, signed_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(seat, wallet) DO UPDATE SET owner = excluded.owner, signature = excluded.signature, signed_at = excluded.signed_at",
-        seat, wallet.toLowerCase(), owner, signature, Date.now(),
+        "INSERT INTO posters (seat, wallet, owner, signature, signed_at, via) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(seat, wallet) DO UPDATE SET owner = excluded.owner, signature = excluded.signature, signed_at = excluded.signed_at, via = excluded.via",
+        seat, wallet.toLowerCase(), owner, signature, Date.now(), via,
       );
     // An approval sends the seat's refused jobs back to the queue: the next run reads them in full and decides again.
     // A revoke refuses the jobs that counted only through a poster approval.
@@ -303,12 +327,15 @@ export default {
         if (!Number.isInteger(seat) || seat < 0 || seat > 999999) return respond({ error: "bad_seat" }, 400);
         if (!isAddress(b.wallet)) return respond({ error: "bad_wallet" }, 400);
         if (typeof b.signature !== "string") return respond({ error: "bad_signature" }, 400);
-        const r = await index(env).setPoster(seat, b.wallet, b.signature, b.revoke === true);
+        if (b.deviceKey !== undefined && !isDeviceKey(b.deviceKey)) return respond({ error: "bad_device_key" }, 400);
+        const r = await index(env).setPoster(seat, b.wallet, b.signature, b.revoke === true, b.deviceKey);
         return respond(r.body, r.status);
       }
       return respond({ error: "not_found" }, 404);
     } catch (e) {
-      return respond({ error: "upstream", message: String(e && e.message ? e.message : e).slice(0, 200) }, 502);
+      const message = String(e && e.message ? e.message : e).slice(0, 200);
+      if (/answered (429|503)/.test(message)) return respond({ error: "imd_busy", message: "IMD is busy; try again in a moment" }, 503);
+      return respond({ error: "upstream", message }, 502);
     }
   },
   async scheduled(event, env, ctx) {

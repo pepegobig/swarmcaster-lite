@@ -1,4 +1,5 @@
 // Rules shared by the index Worker and its tests: which IMD jobs count for a seat, and poster approvals.
+import { ed25519 } from "@noble/curves/ed25519";
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { keccak_256 } from "@noble/hashes/sha3";
 import { bytesToHex, hexToBytes, utf8ToBytes } from "@noble/hashes/utils";
@@ -8,6 +9,7 @@ const MAX_TEXT = 280;
 const MAX_NAME = 50;
 const MAX_LINKS = 5;
 
+export const isDeviceKey = (s) => typeof s === "string" && /^[0-9a-f]{64}$/.test(s);
 export const isAddress = (s) => typeof s === "string" && /^0x[0-9a-fA-F]{40}$/.test(s);
 export const isHttpsUrl = (s) => {
   try {
@@ -70,6 +72,16 @@ export function recoverSigner(message, signature) {
   const digest = keccak_256(new Uint8Array([...prefix, ...msg]));
   const point = secp256k1.Signature.fromCompact(sig.slice(0, 64)).addRecoveryBit(v).recoverPublicKey(digest);
   return "0x" + bytesToHex(keccak_256(point.toRawBytes(false).slice(1)).slice(-20));
+}
+
+// True when `signature` is the Ed25519 signature of `message` by the IMD worker device key `deviceKey` (64 hex).
+export function verifyDevice(message, signature, deviceKey) {
+  try {
+    const sig = hexToBytes(String(signature).replace(/^0x/, ""));
+    return sig.length === 64 && ed25519.verify(sig, utf8ToBytes(message), hexToBytes(deviceKey));
+  } catch {
+    return false;
+  }
 }
 
 const TYPES = { mp4: "video/mp4", webm: "video/webm", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml", mp3: "audio/mpeg", wav: "audio/wav", pdf: "application/pdf", md: "text/markdown" };

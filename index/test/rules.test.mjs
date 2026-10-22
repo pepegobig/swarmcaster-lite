@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { keccak_256 } from "@noble/hashes/sha3";
 import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils";
-import { approvalMessage, decide, parseJob, pickFiles, pickManifest, recoverSigner, revokeMessage } from "../src/rules.js";
+import { approvalMessage, decide, parseJob, pickFiles, pickManifest, recoverSigner, revokeMessage, verifyDevice } from "../src/rules.js";
 
 const addressOf = (priv) => "0x" + bytesToHex(keccak_256(secp256k1.getPublicKey(priv, false).slice(1)).slice(-20));
 function personalSign(priv, message) {
@@ -78,4 +78,17 @@ test("pickManifest reads miniapp and frame manifests", () => {
   assert.equal(m.splashBackgroundColor, "#1a1a2e");
   assert.equal(pickManifest({ frame: { name: "Old", homeUrl: "javascript:x" } }, "https://site/").homeUrl, "https://site/");
   assert.equal(pickManifest({}, "https://site/"), null);
+});
+
+test("verifyDevice checks an IMD device key's Ed25519 signature", async () => {
+  const { ed25519 } = await import("@noble/curves/ed25519");
+  const seed = ed25519.utils.randomPrivateKey();
+  const pub = bytesToHex(ed25519.getPublicKey(seed));
+  const msg = approvalMessage(912, "0xc3f59e5dd9e8d8a74631c0ea68e38fd49ff1b04b");
+  const sig = bytesToHex(ed25519.sign(utf8ToBytes(msg), seed));
+  assert.equal(verifyDevice(msg, sig, pub), true);
+  assert.equal(verifyDevice(msg, "0x" + sig, pub), true);
+  assert.equal(verifyDevice(revokeMessage(912, "0xc3f59e5dd9e8d8a74631c0ea68e38fd49ff1b04b"), sig, pub), false);
+  assert.equal(verifyDevice(msg, sig, bytesToHex(ed25519.getPublicKey(ed25519.utils.randomPrivateKey()))), false);
+  assert.equal(verifyDevice(msg, "abcd", pub), false);
 });
