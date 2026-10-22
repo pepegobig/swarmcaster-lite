@@ -25,6 +25,13 @@ async function get(path) {
 export const seatsQuery = { queryKey: ["seats"], queryFn: () => get("/seats"), staleTime: 60_000 };
 export const seatQuery = (tokenId) => ({ queryKey: ["seat", tokenId], queryFn: () => get(`/seats/${tokenId}`), staleTime: 30_000 });
 export const appsQuery = { queryKey: ["apps"], queryFn: () => get("/apps"), staleTime: 60_000 };
+export const feedQuery = {
+  queryKey: ["feed"],
+  queryFn: ({ pageParam }) => get(`/feed?limit=20${pageParam ? `&before=${encodeURIComponent(pageParam)}` : ""}`),
+  initialPageParam: null,
+  getNextPageParam: (last) => last.next,
+  staleTime: 30_000,
+};
 
 export const isHttps = (u) => {
   try {

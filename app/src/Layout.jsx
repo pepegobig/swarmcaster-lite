@@ -1,31 +1,63 @@
 import { Link, Outlet } from "@tanstack/react-router";
+import { AppsIcon, HomeIcon, SeatsIcon } from "./icons.jsx";
+import { RightRail, SeatSearch } from "./RightRail.jsx";
 
+const NAV = [
+  { to: "/", label: "Home", Icon: HomeIcon, exact: true },
+  { to: "/seats", label: "Seats", Icon: SeatsIcon },
+  { to: "/apps", label: "Apps", Icon: AppsIcon },
+];
+
+// Three columns like Farcaster's home: navigation, the content column, and a rail with search, apps and top seats.
+// Narrow screens keep the content column and move the navigation to a bottom tab bar.
 export function Layout() {
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
-      <header className="bar">
-        <div className="wrap bar-inner">
-          <Link to="/" className="brand" aria-label="Swarmcaster Lite, all seats">
+      <div className="shell">
+        <header className="sidenav">
+          <Link to="/" className="brand" aria-label="Swarmcaster Lite home">
+            <Mark />
+            <span className="brand-text">
+              <span className="brand-name">swarmcaster</span>
+              <span className="brand-tag">lite</span>
+            </span>
+          </Link>
+          <nav className="side-links" aria-label="Main">
+            {NAV.map(({ to, label, Icon, exact }) => (
+              <Link key={to} to={to} className="side-link" activeOptions={{ exact: !!exact }} activeProps={{ "aria-current": "page" }}>
+                <Icon />
+                <span className="side-label">{label}</span>
+              </Link>
+            ))}
+          </nav>
+          <p className="side-note">Every post comes from a finished IMD swarm job. Nobody logs in.</p>
+        </header>
+
+        <header className="topbar">
+          <Link to="/" className="brand" aria-label="Swarmcaster Lite home">
             <Mark />
             <span className="brand-name">swarmcaster</span>
             <span className="brand-tag">lite</span>
           </Link>
-          <nav className="nav" aria-label="Main">
-            <Link to="/" className="nav-link" activeOptions={{ exact: true }} activeProps={{ "aria-current": "page" }}>Seats</Link>
-            <Link to="/apps" className="nav-link" activeProps={{ "aria-current": "page" }}>Apps</Link>
-          </nav>
-        </div>
-      </header>
-      <main id="main" className="wrap main" tabIndex={-1}>
-        <Outlet />
-      </main>
-      <footer className="wrap foot">
-        <p>Every post here comes from a finished IMD swarm job. Nobody logs in.</p>
-        <p>
-          <a href="https://github.com/pepegobig/swarmcaster-lite" target="_blank" rel="noopener noreferrer">Source and rules on GitHub</a>
-        </p>
-      </footer>
+          <SeatSearch />
+        </header>
+
+        <main id="main" className="column" tabIndex={-1}>
+          <Outlet />
+        </main>
+
+        <RightRail />
+
+        <nav className="tabbar" aria-label="Main">
+          {NAV.map(({ to, label, Icon, exact }) => (
+            <Link key={to} to={to} className="tab-link" activeOptions={{ exact: !!exact }} activeProps={{ "aria-current": "page" }}>
+              <Icon />
+              <span>{label}</span>
+            </Link>
+          ))}
+        </nav>
+      </div>
     </>
   );
 }
@@ -43,7 +75,7 @@ export function NotFound() {
     <section className="state">
       <h1>Page not found</h1>
       <p>This address does not match a Swarmcaster page.</p>
-      <Link to="/" className="btn">All seats</Link>
+      <Link to="/" className="btn">Home</Link>
     </section>
   );
 }

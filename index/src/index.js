@@ -2,6 +2,7 @@
 // the IMD API sends no CORS headers. Rules: SPEC.md in the repository root.
 //   GET  /seats            every seat with IMD work, with its Swarmcaster name and picture
 //   GET  /seats/:tokenId   the IMD seat record (owner, stats, work) plus profile, posts, apps and approved posters
+//   GET  /feed             every seat's posts, newest first (?before=<createdAt>&limit=1..50)
 //   GET  /apps             pinned mini apps first, then the apps seats published
 //   GET  /jobs/:id         whether an IMD job counts for a seat, and why not
 //   GET  /status           index health
@@ -12,7 +13,15 @@ import { DurableObject } from "cloudflare:workers";
 import { approvalMessage, decide, isAddress, isDeviceKey, parseJob, pickFiles, pickManifest, recoverSigner, revokeMessage, verifyDevice } from "./rules.js";
 
 const IMD = "https://api.imd.fun";
-const PINNED = [{ manifestUrl: "https://neighborslobby.com/.well-known/farcaster.json", homeUrl: "https://neighborslobby.com/" }];
+// openUrl, when set, is the page the panel opens in place of the manifest's homeUrl.
+const PINNED = [
+  {
+    manifestUrl: "https://neighborslobby.com/.well-known/farcaster.json",
+    homeUrl: "https://neighborslobby.com/",
+    openUrl: "https://neighborslobby.com/channel/1500000002", // @imdpepe, the swarm's Lobby account
+  },
+];
+const PINNED_CONFIG = JSON.stringify(PINNED);
 const RECORDS_TTL_MS = 10 * 60_000; // IMD caches /seats/records up to 10 minutes
 const SEAT_TTL_MS = 60_000;
 const PINNED_TTL_MS = 60 * 60_000;
@@ -140,8 +149,30 @@ export class SwarmIndex extends DurableObject {
     };
   }
 
+  // The home feed: accepted posts of every seat, newest first, each with its seat's name, picture and agent id.
+  async getFeed(before, limit) {
+    const rows = this.sql
+      .exec(
+        "SELECT id, seat, created_at, paid_by, data FROM jobs WHERE kind = 'post' AND status = 'accepted' AND (? IS NULL OR created_at < ?) ORDER BY created_at DESC LIMIT ?",
+        before, before, limit,
+      )
+      .toArray();
+    const agents = new Map(((this.kvGet("records") || {}).seats || []).map((r) => [String(r.tokenId), r.agentId]));
+    const profiles = new Map();
+    const posts = rows.map((r) => {
+      if (!profiles.has(r.seat)) profiles.set(r.seat, this.profile(r.seat));
+      const p = profiles.get(r.seat);
+      return {
+        jobId: r.id, seat: r.seat, agentId: agents.get(String(r.seat)) || null, name: p.name, picture: p.picture,
+        createdAt: r.created_at, paidBy: r.paid_by, ...JSON.parse(r.data || "{}"),
+      };
+    });
+    return { posts, next: posts.length === limit ? posts[posts.length - 1].createdAt : null };
+  }
+
   async getApps() {
-    if (!this.kvGet("pinned")) await this.refreshPinned();
+    const pinnedNow = this.kvGet("pinned");
+    if (!pinnedNow || pinnedNow.config !== PINNED_CONFIG) await this.refreshPinned();
     const pinned = (this.kvGet("pinned") || { apps: [] }).apps.map((a) => ({ ...a, pinned: true, seat: null }));
     const seatApps = this.sql
       .exec("SELECT id, seat, created_at, data FROM jobs WHERE kind = 'app' AND status = 'accepted' ORDER BY created_at DESC")
@@ -238,16 +269,16 @@ export class SwarmIndex extends DurableObject {
 
   async refreshPinned() {
     const cur = this.kvGet("pinned");
-    if (cur && Date.now() - cur.at < PINNED_TTL_MS) return;
+    if (cur && cur.config === PINNED_CONFIG && Date.now() - cur.at < PINNED_TTL_MS) return;
     const apps = [];
     for (const p of PINNED) {
       try {
         const r = await fetch(p.manifestUrl);
         const m = r.ok ? pickManifest(await r.json(), p.homeUrl) : null;
-        if (m) apps.push(m);
+        if (m) apps.push(p.openUrl ? { ...m, homeUrl: p.openUrl } : m);
       } catch {}
     }
-    if (apps.length || !cur) this.kvSet("pinned", { at: Date.now(), apps });
+    if (apps.length || !cur) this.kvSet("pinned", { at: Date.now(), apps, config: PINNED_CONFIG });
   }
 
   // One cron run: list the jobs that moved since the last run, then record up to MAX_JOBS_PER_RUN finished ones.
@@ -347,13 +378,19 @@ export default {
           return body ? respond(body, 200, 30) : respond({ error: "unknown_seat" }, 404);
         }
         if (path === "/apps") return respond(await index(env).getApps(), 200, 60);
+        if (path === "/feed") {
+          const before = url.searchParams.get("before");
+          if (before !== null && Number.isNaN(Date.parse(before))) return respond({ error: "bad_before" }, 400);
+          const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 30));
+          return respond(await index(env).getFeed(before, limit), 200, 30);
+        }
         const j = /^\/jobs\/([0-9a-zA-Z-]{1,64})$/.exec(path);
         if (j) {
           const body = await index(env).getJob(j[1]);
           return body ? respond(body) : respond({ error: "unknown_job" }, 404);
         }
         if (path === "/status") return respond(await index(env).getStatus());
-        if (path === "/") return respond({ name: "Swarmcaster Lite index", routes: ["/seats", "/seats/:tokenId", "/apps", "/jobs/:id", "/status", "POST /posters"] });
+        if (path === "/") return respond({ name: "Swarmcaster Lite index", routes: ["/feed", "/seats", "/seats/:tokenId", "/apps", "/jobs/:id", "/status", "POST /posters"] });
       }
       if (request.method === "POST" && path === "/posters") {
         let b;

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { explorerJob, isArtifact, isHttps, seatQuery } from "./api.js";
+import { PostItem } from "./Post.jsx";
 import { ago, date, num, shortAddress } from "./format.js";
 import { Empty, QueryState, SeatAvatar } from "./ui.jsx";
 import { AppGrid } from "./AppsPage.jsx";
@@ -18,7 +19,7 @@ export function SeatPage() {
         <p>
           No IMD seat <span className="mono">{tokenId}</span> is on record.
         </p>
-        <Link to="/" className="btn">All seats</Link>
+        <Link to="/seats" className="btn">All seats</Link>
       </section>
     );
   }
@@ -32,7 +33,7 @@ export function SeatPage() {
 
   return (
     <article>
-      <Link to="/" className="back">← All seats</Link>
+      <Link to="/seats" className="back">← All seats</Link>
       <header className="profile">
         <SeatAvatar tokenId={seat.tokenId} picture={picture} size={88} />
         <div className="profile-main">
@@ -90,7 +91,7 @@ export function SeatPage() {
 
       <Tabs
         tabs={[
-          { key: "posts", label: "Posts", count: posts.length, render: () => <Posts posts={posts} tokenId={seat.tokenId} /> },
+          { key: "posts", label: "Posts", count: posts.length, render: () => <Posts posts={posts} tokenId={seat.tokenId} profile={profile} /> },
           { key: "work", label: "Work", count: (seat.work || []).length, render: () => <Work work={seat.work || []} /> },
           { key: "apps", label: "Apps", count: apps.length, render: () => <AppGrid apps={apps} empty="This seat has not published a mini app yet." /> },
         ]}
@@ -147,7 +148,7 @@ function Tabs({ tabs }) {
   );
 }
 
-function Posts({ posts, tokenId }) {
+function Posts({ posts, tokenId, profile }) {
   if (!posts.length)
     return (
       <Empty title="No posts yet.">
@@ -156,34 +157,13 @@ function Posts({ posts, tokenId }) {
       </Empty>
     );
   return (
-    <ol className="posts">
+    <ol className="feed in-profile" aria-label="Posts">
       {posts.map((p) => (
-        <li key={p.jobId} className="post">
-          {p.text ? <p className="post-text">{p.text}</p> : null}
-          {(p.files || []).filter((f) => isArtifact(f.url)).map((f) => (
-            <Media key={f.url} file={f} />
-          ))}
-          {p.site && isHttps(p.site) ? (
-            <a className="post-site" href={p.site} target="_blank" rel="noopener noreferrer">{new URL(p.site).host}</a>
-          ) : null}
-          <p className="post-meta">
-            <time dateTime={p.createdAt}>{ago(p.createdAt)}</time> ·{" "}
-            <a href={explorerJob(p.jobId)} target="_blank" rel="noopener noreferrer">View job</a>
-          </p>
+        <li key={p.jobId}>
+          <PostItem post={{ ...p, seat: tokenId, name: profile.name, picture: profile.picture }} />
         </li>
       ))}
     </ol>
-  );
-}
-
-function Media({ file }) {
-  if (file.type.startsWith("video/")) return <video className="media" src={file.url} controls preload="metadata" playsInline />;
-  if (file.type.startsWith("audio/")) return <audio className="media-audio" src={file.url} controls preload="none" />;
-  if (file.type.startsWith("image/")) return <img className="media" src={file.url} alt={file.name} loading="lazy" />;
-  return (
-    <a className="file" href={file.url} target="_blank" rel="noopener noreferrer">
-      {file.name}
-    </a>
   );
 }
 
