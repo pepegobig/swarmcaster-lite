@@ -88,7 +88,9 @@ Two signers are accepted:
 
 Anyone can send the request; only a valid signature counts. An approval stops counting when the seat changes owner.
 To revoke, the same kind of signer signs `Swarmcaster Lite\nSeat: <tokenId>\nRevoke poster: <poster address>` and sends
-it with `"revoke": true`. Jobs that the index refused before an approval are read again on the next run.
+it with `"revoke": true`. Jobs that the index refused before an approval are read again on the next run. While IMD is
+busy, the index answers `202` with `queued: true` and checks the request on its next runs; `GET /status` shows the
+queue and the last queued result.
 
 ## Mini apps
 
@@ -117,10 +119,11 @@ Base URL: `https://swarmcaster-lite-index.swarmderby.workers.dev` (Cloudflare Wo
 | `GET /apps` | `{apps:[{name, subtitle, homeUrl, iconUrl, splashImageUrl, splashBackgroundColor, pinned, seat}]}` |
 | `GET /jobs/:id` | `{jobId, seat, kind, jobState, status, reason, paidBy, createdAt}`. `404 unknown_job` for jobs without a Swarmcaster line |
 | `GET /status` | Last scan, last error, job and poster counts |
-| `POST /posters` | `{seat, wallet, signature, deviceKey?, revoke?}`. `403 not_owner` when a wallet signature is not the current owner's; `403 not_seat_device` when the device is not the seat's active enrolled device |
+| `POST /posters` | `{seat, wallet, signature, deviceKey?, revoke?}`. `403 not_owner` when a wallet signature is not the current owner's; `403 not_seat_device` when the device is not the seat's active enrolled device; `202 queued` while IMD is busy |
 
 A post is `{jobId, createdAt, paidBy, text, files:[{name, type, url, bytes}], site, launch}`. When IMD answers busy,
-`/seats/:tokenId` serves the last good copy of the seat record, or `503 imd_busy` when it has none. A cron every 10 minutes
+`/seats/:tokenId` serves the last good copy of the seat record, or `503 imd_busy` when it has none. IMD reads time out
+after 10 seconds. A cron every 10 minutes
 lists the IMD jobs that changed and contain "Swarmcaster", and records up to 8 finished ones per run. It stays under
 IMD's read limit of 120 reads a minute.
 

@@ -17,10 +17,16 @@ const RECORDS_TTL_MS = 10 * 60_000; // IMD caches /seats/records up to 10 minute
 const SEAT_TTL_MS = 60_000;
 const PINNED_TTL_MS = 60 * 60_000;
 const MAX_JOBS_PER_RUN = 8; // up to 5 reads each; the free plan allows 50 subrequests per invocation
+const IMD_TIMEOUT_MS = 10_000;
 const TERMINAL = new Set(["blocked", "failed", "cancelled", "refunded", "expired"]);
 
 async function imdAt(base, path) {
-  const r = await fetch(base + path, { headers: { Accept: "application/json" } });
+  let r;
+  try {
+    r = await fetch(base + path, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(IMD_TIMEOUT_MS) });
+  } catch (e) {
+    throw new Error(`${path} ${e && e.name === "TimeoutError" ? "timed out" : "network error"}`);
+  }
   if (r.status === 404) return null;
   if (!r.ok) throw new Error(`${path} answered ${r.status}`);
   return r.json();
@@ -39,6 +45,8 @@ export class SwarmIndex extends DurableObject {
     try {
       this.sql.exec("ALTER TABLE posters ADD COLUMN via TEXT"); // tables made before device approvals
     } catch {}
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS queued_posters (seat INTEGER NOT NULL, wallet TEXT NOT NULL, signature TEXT NOT NULL,
+      device_key TEXT, revoke INTEGER NOT NULL, received_at INTEGER NOT NULL, PRIMARY KEY (seat, wallet, revoke));`);
     this.seatCache = new Map(); // tokenId -> { at, body }
     this.base = env.IMD_API || IMD; // IMD_API points a local test run at a mock
   }
@@ -155,11 +163,40 @@ export class SwarmIndex extends DurableObject {
       accepted: count("SELECT COUNT(*) AS n FROM jobs WHERE status = 'accepted'"),
       pending: count("SELECT COUNT(*) AS n FROM jobs WHERE status = 'pending'"),
       posters: count("SELECT COUNT(*) AS n FROM posters"),
+      queuedPosters: count("SELECT COUNT(*) AS n FROM queued_posters"),
+      lastQueuedPoster: this.kvGet("lastQueuedPoster"),
     };
   }
 
   // The owner signs with its wallet (personal_sign), or the seat's worker signs with its IMD device key: IMD enrolls a
   // device for a seat only after the owner signs the pairing, and /workers/:deviceKey/standing names that seat.
+  // While IMD is busy, a request is queued and checked by the next cron runs; the signature alone authorizes nothing.
+  async requestPoster(seat, wallet, signature, revoke, deviceKey) {
+    try {
+      return await this.setPoster(seat, wallet, signature, revoke, deviceKey);
+    } catch (e) {
+      if (!/answered (429|503)|timed out|network error/.test(String(e && e.message))) throw e;
+      this.sql.exec(
+        "INSERT INTO queued_posters (seat, wallet, signature, device_key, revoke, received_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(seat, wallet, revoke) DO UPDATE SET signature = excluded.signature, device_key = excluded.device_key, received_at = excluded.received_at",
+        seat, wallet.toLowerCase(), signature, deviceKey || null, revoke ? 1 : 0, Date.now(),
+      );
+      return { status: 202, body: { seat, wallet: wallet.toLowerCase(), queued: true, message: "IMD is busy; the index checks this request on its next runs" } };
+    }
+  }
+
+  async drainQueuedPosters() {
+    for (const q of this.sql.exec("SELECT * FROM queued_posters ORDER BY received_at LIMIT 3").toArray()) {
+      let r;
+      try {
+        r = await this.setPoster(q.seat, q.wallet, q.signature, q.revoke === 1, q.device_key || undefined);
+      } catch {
+        return; // IMD still busy: keep the queue for the next run
+      }
+      this.sql.exec("DELETE FROM queued_posters WHERE seat = ? AND wallet = ? AND revoke = ?", q.seat, q.wallet, q.revoke);
+      this.kvSet("lastQueuedPoster", { at: Date.now(), seat: q.seat, wallet: q.wallet, revoke: q.revoke === 1, status: r.status, result: r.body.error || "ok" });
+    }
+  }
+
   async setPoster(seat, wallet, signature, revoke, deviceKey) {
     const record = await this.seatRecord(String(seat));
     if (!record || !isAddress(record.owner)) return { status: 404, body: { error: "unknown_seat" } };
@@ -218,6 +255,7 @@ export class SwarmIndex extends DurableObject {
     try {
       await this.records();
       await this.refreshPinned();
+      await this.drainQueuedPosters();
       const last = this.kvGet("lastScan");
       const since = last ? `&since=${encodeURIComponent(new Date(last.at - 15 * 60_000).toISOString())}` : "";
       const list = (await this.imd(`/jobs?q=Swarmcaster&limit=100${since}`)) || { jobs: [] };
@@ -328,13 +366,13 @@ export default {
         if (!isAddress(b.wallet)) return respond({ error: "bad_wallet" }, 400);
         if (typeof b.signature !== "string") return respond({ error: "bad_signature" }, 400);
         if (b.deviceKey !== undefined && !isDeviceKey(b.deviceKey)) return respond({ error: "bad_device_key" }, 400);
-        const r = await index(env).setPoster(seat, b.wallet, b.signature, b.revoke === true, b.deviceKey);
+        const r = await index(env).requestPoster(seat, b.wallet, b.signature, b.revoke === true, b.deviceKey);
         return respond(r.body, r.status);
       }
       return respond({ error: "not_found" }, 404);
     } catch (e) {
       const message = String(e && e.message ? e.message : e).slice(0, 200);
-      if (/answered (429|503)/.test(message)) return respond({ error: "imd_busy", message: "IMD is busy; try again in a moment" }, 503);
+      if (/answered (429|503)|timed out|network error/.test(message)) return respond({ error: "imd_busy", message: "IMD is busy; try again in a moment" }, 503);
       return respond({ error: "upstream", message }, 502);
     }
   },
