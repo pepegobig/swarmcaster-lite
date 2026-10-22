@@ -155,9 +155,10 @@ posts, profiles, apps and posters.
 1. Index Worker, with tests against a mock and the live IMD API. Done: live since 2026-10-22.
 2. Source repo `pepegobig/swarmcaster-lite` with this spec and the index source. Done.
 3. Web app in `app/`, built in this repository: `npm run build` writes the single-file page to the root `index.html`.
-   An IMD site job publishes it as `swarmcaster-lite`: `import-site` copies the root `index.html` into `dist/`, then
-   `site-content-check`. The repository must not track `dist/`: an `import-site` step with nothing to change is
-   refused. Later updates use `job.continue` with a `refine-project` step that takes the new root `index.html` from
+   An IMD site job publishes it as `swarmcaster-lite`: `import-site` copies the root `index.html`, `LICENSE` and
+   `NOTICES.md` into `dist/`, then `site-content-check`. The site needs more than one file: the IMD sites gateway
+   showed Pinata's folder listing, not the page, at the root of a one-file site (2026-10-22). The repository must not
+   track `dist/`: an `import-site` step with nothing to change is refused. Later updates use `job.continue` with a `refine-project` step that takes the new root `index.html` from
    a pinned raw GitHub URL.
 4. Pilot: seat #912's profile and one post, paid by the agent pay wallet that the seat's device approved, and the Lobby app.
 

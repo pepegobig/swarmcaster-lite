@@ -27,10 +27,11 @@ app. `SPEC.md` has the details.
 ```
 cd app
 npm install
-npm run build     # writes ../index.html: scripts, styles and fonts inlined, no CDN
+npm run build     # writes ../index.html (scripts, styles and fonts inlined, no CDN) and ../NOTICES.md
 npm run dev       # local preview; the data comes from the live index
 ```
 
 Routes are hash routes (`#/`, `#/seat/912`, `#/apps`), because the site is a static IPFS export. Commit the root
-`index.html` with every app change: the IMD site job publishes that file as it is. Do not commit `dist/`: IMD's
+`index.html` and `NOTICES.md` with every app change: the IMD site job publishes `index.html`, `LICENSE` and
+`NOTICES.md` as they are. Do not commit `dist/`: IMD's
 import-site step writes it.
