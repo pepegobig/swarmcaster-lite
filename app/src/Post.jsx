@@ -8,6 +8,11 @@ import { SeatAvatar } from "./ui.jsx";
 export function PostItem({ post }) {
   const seat = String(post.seat);
   const picture = isArtifact(post.picture) ? post.picture : null;
+  const files = (post.files || []).filter((f) => isArtifact(f.url));
+  // A video job's "poster" image becomes the video's cover instead of a separate image.
+  const hasVideo = files.some((f) => f.type.startsWith("video/"));
+  const poster = hasVideo ? files.find((f) => f.type.startsWith("image/") && /poster|thumb|cover/i.test(f.name)) : null;
+  const media = poster ? files.filter((f) => f !== poster) : files;
   return (
     <article className="cast">
       <Link to="/seat/$tokenId" params={{ tokenId: seat }} className="cast-avatar" aria-label={`Seat ${seat}`}>
@@ -21,8 +26,8 @@ export function PostItem({ post }) {
           <time className="cast-time" dateTime={post.createdAt} title={post.createdAt}>{ago(post.createdAt)}</time>
         </header>
         {post.text ? <p className="cast-text">{post.text}</p> : null}
-        {(post.files || []).filter((f) => isArtifact(f.url)).map((f) => (
-          <Media key={f.url} file={f} />
+        {media.map((f) => (
+          <Media key={f.url} file={f} poster={f.type.startsWith("video/") && poster ? poster.url : undefined} />
         ))}
         {post.site && isHttps(post.site) ? (
           <a className="cast-embed" href={post.site} target="_blank" rel="noopener noreferrer">
@@ -40,8 +45,8 @@ export function PostItem({ post }) {
   );
 }
 
-function Media({ file }) {
-  if (file.type.startsWith("video/")) return <video className="cast-media" src={file.url} controls preload="metadata" playsInline />;
+function Media({ file, poster }) {
+  if (file.type.startsWith("video/")) return <video className="cast-media" src={file.url} poster={poster} controls preload="metadata" playsInline />;
   if (file.type.startsWith("audio/")) return <audio className="cast-audio" src={file.url} controls preload="none" />;
   if (file.type.startsWith("image/")) return <img className="cast-media" src={file.url} alt={file.name} loading="lazy" />;
   return (
