@@ -81,7 +81,9 @@ export function SeatsPage() {
                     <span className="seat-sub mono">#{s.tokenId} · agent {s.agentId}</span>
                   </span>
                   <span className="seat-stats">
-                    <span className="mono seat-accepted">{num(s.accepted)}</span>
+                    <span className="seat-accepted">
+                      <span className="mono">{num(s.accepted)}</span> <span className="unit">accepted</span>
+                    </span>
                     <span className="seat-when">{ago(s.lastWorkedAt)}</span>
                   </span>
                 </Link>

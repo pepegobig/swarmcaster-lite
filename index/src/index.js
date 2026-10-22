@@ -17,13 +17,14 @@ const RECORDS_TTL_MS = 10 * 60_000; // IMD caches /seats/records up to 10 minute
 const SEAT_TTL_MS = 60_000;
 const PINNED_TTL_MS = 60 * 60_000;
 const MAX_JOBS_PER_RUN = 8; // up to 5 reads each; the free plan allows 50 subrequests per invocation
-const IMD_TIMEOUT_MS = 10_000;
+const IMD_TIMEOUT_MS = 10_000; // page requests
+const SCAN_TIMEOUT_MS = 25_000; // the cron's job search, which IMD answers slowly under load
 const TERMINAL = new Set(["blocked", "failed", "cancelled", "refunded", "expired"]);
 
-async function imdAt(base, path) {
+async function imdAt(base, path, timeoutMs = IMD_TIMEOUT_MS) {
   let r;
   try {
-    r = await fetch(base + path, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(IMD_TIMEOUT_MS) });
+    r = await fetch(base + path, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(timeoutMs) });
   } catch (e) {
     throw new Error(`${path} ${e && e.name === "TimeoutError" ? "timed out" : "network error"}`);
   }
@@ -51,8 +52,8 @@ export class SwarmIndex extends DurableObject {
     this.base = env.IMD_API || IMD; // IMD_API points a local test run at a mock
   }
 
-  imd(path) {
-    return imdAt(this.base, path);
+  imd(path, timeoutMs) {
+    return imdAt(this.base, path, timeoutMs);
   }
 
   kvGet(k) {
@@ -258,7 +259,7 @@ export class SwarmIndex extends DurableObject {
       await this.drainQueuedPosters();
       const last = this.kvGet("lastScan");
       const since = last ? `&since=${encodeURIComponent(new Date(last.at - 15 * 60_000).toISOString())}` : "";
-      const list = (await this.imd(`/jobs?q=Swarmcaster&limit=100${since}`)) || { jobs: [] };
+      const list = (await this.imd(`/jobs?q=Swarmcaster&limit=100${since}`, SCAN_TIMEOUT_MS)) || { jobs: [] };
       for (const j of list.jobs || []) {
         const parsed = parseJob(j.objective);
         if (!parsed) continue;

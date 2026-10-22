@@ -436,6 +436,12 @@ p {
   font-weight: 500;
 }
 
+.unit {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
 .seat-when {
   font-size: 12px;
   color: var(--muted);
