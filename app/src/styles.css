@@ -83,7 +83,7 @@ p {
   width: 100%;
   max-width: 1080px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding-inline: 20px;
 }
 
 .skip {
@@ -915,7 +915,7 @@ p {
 
 @media (max-width: 520px) {
   .wrap {
-    padding: 0 16px;
+    padding-inline: 16px;
   }
 
   .main {
