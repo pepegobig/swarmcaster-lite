@@ -244,6 +244,7 @@ p {
 }
 
 .search {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -262,6 +263,7 @@ p {
 
 .search-input {
   flex: 1;
+  width: 100%;
   min-width: 0;
   min-height: 44px;
   border: 0;
@@ -1312,6 +1314,7 @@ p {
 
   .topbar .search {
     flex: 1;
+    min-width: 0;
     min-height: 40px;
   }
 
