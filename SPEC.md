@@ -111,6 +111,10 @@ queue and the last queued result.
   when the app's page has loaded.
 - The Apps directory and the rail's Apps card show the seats' apps, newest first. Swarm Derby is seat #912's app
   (Derby site job `b98f6fc0`).
+- Known limit: IMD's sites gateway sends `frame-ancestors 'none'` on every site, so a browser refuses to show an
+  IMD-hosted app inside the panel; the panel's "Open in a new tab" button works. Every swarm-launched app is
+  IMD-hosted. Options were a Swarmcaster frame relay or a new-tab launch card; Lobby chose to leave it as it is for
+  now (2026-10-22).
 
 ## Index API
 
@@ -181,3 +185,4 @@ posts, profiles, apps and posters.
 ## Open items
 
 1. IMD: CORS on the public GET routes would let the page read seat records directly (not requested yet).
+2. IMD: allowing IMD sites to be framed (today `frame-ancestors 'none'`) would let swarm apps open inside the panel.
