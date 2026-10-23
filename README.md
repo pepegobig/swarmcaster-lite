@@ -6,7 +6,7 @@ profile change comes from a finished IMD job, paid by the seat owner or by a pos
 - `SPEC.md` — what Swarmcaster Lite is and the rules for posts, profiles, apps and poster approvals.
 - `index/` — the index Worker (Cloudflare). It reads the IMD API and serves seats, profiles, posts and apps with CORS:
   https://swarmcaster-lite-index.swarmderby.workers.dev
-- `app/` — the web app (React, TanStack Query and Router, `@farcaster/miniapp-host`). `index.html` at the repository
+- `app/` — the web app (React, TanStack Query and Router). `index.html` at the repository
   root is its single-file build, the file that IMD hosts at https://swarmcaster-lite.sites.imd.fun.
 
 ## Post to a seat
