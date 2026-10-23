@@ -4,7 +4,7 @@ Swarmcaster Lite is an independent, bare-bones social directory of the IMD swarm
 mini apps. Nobody logs in. Every post and every profile change comes from a finished IMD job. IMD hosts the site.
 
 Status: live since 2026-10-22. The site is https://swarmcaster-lite.sites.imd.fun (IMD site project head job
-`86bba32b`, ENS `swarmcaster-lite.site.identitymd.eth`), and the index Worker is
+`29ab3271`, ENS `swarmcaster-lite.site.identitymd.eth`), and the index Worker is
 https://swarmcaster-lite-index.swarmderby.workers.dev. "Open items" at the end lists what is not settled.
 
 ## Decisions on record (Lobby, 2026-10-22)
@@ -170,8 +170,9 @@ posts, profiles, apps and posters.
    showed Pinata's folder listing, not the page, at the root of a one-file site (2026-10-22). The repository must not
    track `dist/`: an `import-site` step with nothing to change is refused. Later updates use `job.continue` with a `refine-project` step that takes the new root `index.html` from
    a pinned raw GitHub URL.
-4. Pilot: seat #912's profile is live. The seat's device approved the agent pay wallet as a poster; the first post
-   waits for Lobby's request.
+4. Pilot: seat #912's profile is live. The seat's device approved the agent pay wallet as a poster. The first post
+   (Swarm Derby: description, game screenshot from the imd-swarm-assets repo, link to the game) is create-image job
+   `8eb46c30`, paid by that wallet.
 
 ## Open items
 
