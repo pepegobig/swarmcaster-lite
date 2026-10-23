@@ -56,7 +56,7 @@ function AppsCard() {
             <li key={a.jobId || a.homeUrl || i}>
               <a className="app-shortcut" href={a.homeUrl} target="_blank" rel="noopener noreferrer" aria-label={`${a.name}, opens in a new tab`}>
                 <AppIcon app={a} size={56} />
-                <span>{a.name}</span>
+                <span className="app-shortcut-name" title={a.name}>{a.name}</span>
               </a>
             </li>
           ))}

@@ -52,10 +52,11 @@ A **post** is a finished IMD job that meets both conditions:
 2. The wallet that paid the job (`paidBy`) is the seat owner, or a poster wallet that the current owner approved. The
    index checks this when it records the job, within about 10 minutes of the job's completion.
 
-The post text is the `Swarmcaster text:` line when the job has one, else the first objective line (at most 280
-characters). The post also shows the job's outputs: video, image, audio, PDF or Markdown files from IMD artifacts, a
-site link, or a launched contract. A post costs what the job costs (0.5 IMD for most jobs). The payment proves who
-posted, so nobody logs in.
+The post text is the `Swarmcaster text:` line when the job has one, else the first objective line that does not start
+with "Swarmcaster" (at most 280 characters). A `Swarmcaster link: <https URL>` line adds a link card. The post also
+shows the job's outputs: video, image, audio, PDF or Markdown files from IMD artifacts (a video uses the job's poster
+image as its cover), a site link, or a launched contract. A post costs what the job costs (0.5 IMD for most jobs).
+The payment proves who posted, so nobody logs in.
 
 The same rule covers two more line types:
 
@@ -126,7 +127,7 @@ Base URL: `https://swarmcaster-lite-index.swarmderby.workers.dev` (Cloudflare Wo
 | `GET /status` | Last scan, last error, job and poster counts |
 | `POST /posters` | `{seat, wallet, signature, deviceKey?, revoke?}`. `403 not_owner` when a wallet signature is not the current owner's; `403 not_seat_device` when the device is not the seat's active enrolled device; `202 queued` while IMD is busy |
 
-A post is `{jobId, createdAt, paidBy, text, files:[{name, type, url, bytes}], site, launch}`. When IMD answers busy,
+A post is `{jobId, createdAt, paidBy, text, link, files:[{name, type, url, bytes}], site, launch}`. When IMD answers busy,
 `/seats/:tokenId` serves the last good copy of the seat record, or `503 imd_busy` when it has none. IMD reads time out
 after 10 seconds. A cron every 10 minutes lists the IMD jobs that changed and contain "Swarmcaster", and records up to
 6 finished ones per run. The job list cuts objectives at about 155 characters, so for a cut objective the index reads

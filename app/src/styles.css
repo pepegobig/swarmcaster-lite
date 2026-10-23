@@ -319,13 +319,22 @@ p {
   justify-items: center;
   gap: 6px;
   width: 100%;
+  min-width: 0;
   padding: 8px 4px;
   border: 0;
   border-radius: 12px;
   background: transparent;
   color: var(--text);
-  font: 500 13px var(--sans);
+  font: 500 12px/1.3 var(--sans);
+  text-align: center;
   cursor: pointer;
+}
+
+.app-shortcut-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-shortcut:hover {
@@ -497,6 +506,44 @@ p {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 14px;
+}
+
+.cast-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.cast-link:hover {
+  text-decoration: none;
+  border-color: var(--accent-dim);
+}
+
+.cast-link-text {
+  display: grid;
+  min-width: 0;
+}
+
+.cast-link-host {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cast-link-path {
+  color: var(--muted);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cast-actions {

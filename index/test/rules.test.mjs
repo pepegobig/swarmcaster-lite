@@ -17,8 +17,13 @@ test("parseJob reads the three line kinds and ignores other jobs", () => {
   assert.equal(parseJob("Make a video of Pepe"), null);
   assert.equal(parseJob("Swarmcaster post: seat abc"), null);
   assert.deepEqual(parseJob("Make a short video of Pepe at bat.\nSwarmcaster post: seat 912\nOutputs: video"), {
-    kind: "post", seat: 912, text: "Make a short video of Pepe at bat.",
+    kind: "post", seat: 912, text: "Make a short video of Pepe at bat.", link: null,
   });
+  const linked = parseJob("Swarmcaster post: seat 912\nSwarmcaster link: https://swarm-derby.sites.imd.fun/\nSwarmcaster text: Play ball");
+  assert.equal(linked.link, "https://swarm-derby.sites.imd.fun/");
+  assert.equal(linked.text, "Play ball");
+  assert.equal(parseJob("Swarmcaster post: seat 1\nSwarmcaster link: javascript:alert(1)\nHello").link, null);
+  assert.equal(parseJob("Swarmcaster post: seat 1\nSwarmcaster link: https://a.example/\nHello").text, "Hello");
   assert.equal(parseJob("Swarmcaster post: seat #912\nSwarmcaster text: Hello swarm\nMore detail").text, "Hello swarm");
   const p = parseJob("swarmcaster profile: seat 7\nname: Gus\nbio: Slugger on deck\nlink: https://example.com\nlink: javascript:alert(1)\nlink: http://plain.example");
   assert.deepEqual(p, { kind: "profile", seat: 7, name: "Gus", bio: "Slugger on deck", links: ["https://example.com"] });

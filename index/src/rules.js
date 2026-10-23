@@ -32,8 +32,9 @@ export function parseJob(objective) {
     return l ? l.slice(name.length + 1).trim() : "";
   };
   if (kind === "post") {
-    const text = field("swarmcaster text") || lines.find((x) => x && !LINE.test(x)) || "";
-    return { kind, seat, text: clip(text, MAX_TEXT) };
+    const text = field("swarmcaster text") || lines.find((x) => x && !/^swarmcaster /i.test(x)) || "";
+    const link = field("swarmcaster link");
+    return { kind, seat, text: clip(text, MAX_TEXT), link: isHttpsUrl(link) ? link : null };
   }
   if (kind === "profile") {
     const links = lines

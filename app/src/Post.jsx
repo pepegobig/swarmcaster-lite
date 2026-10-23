@@ -29,6 +29,7 @@ export function PostItem({ post }) {
         {media.map((f) => (
           <Media key={f.url} file={f} poster={f.type.startsWith("video/") && poster ? poster.url : undefined} />
         ))}
+        {post.link && isHttps(post.link) && post.link !== post.site ? <LinkCard url={post.link} /> : null}
         {post.site && isHttps(post.site) ? (
           <a className="cast-embed" href={post.site} target="_blank" rel="noopener noreferrer">
             <span className="cast-embed-host">{new URL(post.site).host}</span>
@@ -42,6 +43,21 @@ export function PostItem({ post }) {
         </footer>
       </div>
     </article>
+  );
+}
+
+// A post's "Swarmcaster link:" as a card: the host in bold, the path below, opening in a new tab.
+function LinkCard({ url }) {
+  const u = new URL(url);
+  const path = (u.pathname + u.search).replace(/^\/$/, "");
+  return (
+    <a className="cast-link" href={url} target="_blank" rel="noopener noreferrer">
+      <span className="cast-link-text">
+        <span className="cast-link-host">{u.host}</span>
+        {path ? <span className="cast-link-path mono">{path}</span> : null}
+      </span>
+      <ExternalIcon />
+    </a>
   );
 }
 
