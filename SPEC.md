@@ -181,3 +181,5 @@ posts, profiles, apps and posters.
 1. IMD: CORS on the public GET routes would let the page read seat records directly (not requested yet).
 2. IMD: allowing IMD sites to be framed (today `frame-ancestors 'none'`) would let swarm apps open inside Swarmcaster
    again, with the panel from git.
+3. awesome-imd listing: pull request https://github.com/Identity-md/awesome-imd/pull/18 (opened by pepegobig on
+   2026-10-22) adds Swarmcaster Lite and the skill under Projects; it waits for IMD to merge it.
