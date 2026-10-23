@@ -34,10 +34,6 @@ body {
   min-height: 100vh;
 }
 
-body.locked {
-  overflow: hidden;
-}
-
 a {
   color: var(--accent);
   text-decoration: none;
@@ -1075,6 +1071,16 @@ p {
   transition: border-color 150ms ease, background 150ms ease;
 }
 
+.app-card:hover,
+.app-shortcut:hover {
+  text-decoration: none;
+}
+
+.app-open {
+  flex: none;
+  color: var(--muted);
+}
+
 .app-card:hover {
   border-color: var(--line-strong);
   background: var(--surface-2);
@@ -1113,100 +1119,6 @@ p {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.4;
-}
-
-/* Mini app panel */
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: grid;
-  place-items: center;
-  padding: 12px;
-  background: rgba(5, 6, 7, 0.72);
-  animation: fade 180ms ease-out;
-}
-
-.panel {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  width: min(1120px, 100%);
-  height: min(900px, calc(100dvh - 48px));
-  border-radius: 16px;
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  overflow: hidden;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
-}
-
-.panel.compact {
-  width: min(424px, 100%);
-  height: min(760px, calc(100dvh - 48px));
-}
-
-.panel-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 8px 8px 14px;
-  border-bottom: 1px solid var(--line);
-}
-
-.panel-head .app-icon {
-  border-radius: 8px;
-}
-
-.panel-title {
-  flex: 1;
-  min-width: 0;
-  font-size: 15px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.panel-body {
-  position: relative;
-  background: #fff;
-}
-
-.panel-note {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  z-index: 2;
-  margin: 0;
-  padding: 10px 14px;
-  background: var(--surface-2);
-  color: var(--muted);
-  font-size: 13px;
-  border-bottom: 1px solid var(--line);
-}
-
-.panel-failed {
-  grid-template-rows: auto auto;
-  height: auto;
-}
-
-.panel-body iframe {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border: 0;
-}
-
-.splash {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: var(--surface);
-}
-
-.splash img {
-  border-radius: 20px;
-  animation: pulse 1.6s ease-in-out infinite;
 }
 
 /* States */
@@ -1261,18 +1173,6 @@ p {
   from {
     opacity: 0;
     transform: translateY(4px);
-  }
-}
-
-@keyframes fade {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes pulse {
-  50% {
-    opacity: 0.6;
   }
 }
 
@@ -1431,21 +1331,6 @@ p {
     padding: 12px 14px;
   }
 
-  .overlay {
-    padding: 0;
-  }
-
-  .panel,
-  .panel.compact {
-    width: 100%;
-    height: 100dvh;
-    border-radius: 0;
-    border: 0;
-  }
-
-  .panel-size {
-    display: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

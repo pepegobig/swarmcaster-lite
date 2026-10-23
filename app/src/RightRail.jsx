@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { appsQuery, seatsQuery } from "./api.js";
+import { appsQuery, isHttps, seatsQuery } from "./api.js";
 import { num } from "./format.js";
 import { SearchIcon } from "./icons.jsx";
 import { SeatAvatar } from "./ui.jsx";
 import { AppIcon } from "./AppsPage.jsx";
-import { MiniAppPanel } from "./MiniAppPanel.jsx";
 
 export function RightRail() {
   return (
@@ -42,8 +41,7 @@ export function SeatSearch() {
 
 function AppsCard() {
   const q = useQuery(appsQuery);
-  const [open, setOpen] = useState(null);
-  const apps = (q.data && q.data.apps) || [];
+  const apps = ((q.data && q.data.apps) || []).filter((a) => isHttps(a.homeUrl));
   return (
     <section className="card" aria-labelledby="rail-apps">
       <div className="card-head">
@@ -56,15 +54,14 @@ function AppsCard() {
         <ul className="app-shortcuts">
           {apps.slice(0, 6).map((a, i) => (
             <li key={a.jobId || a.homeUrl || i}>
-              <button type="button" className="app-shortcut" onClick={() => setOpen(a)}>
+              <a className="app-shortcut" href={a.homeUrl} target="_blank" rel="noopener noreferrer" aria-label={`${a.name}, opens in a new tab`}>
                 <AppIcon app={a} size={56} />
                 <span>{a.name}</span>
-              </button>
+              </a>
             </li>
           ))}
         </ul>
       )}
-      {open ? <MiniAppPanel app={open} onClose={() => setOpen(null)} /> : null}
     </section>
   );
 }

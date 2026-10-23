@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { appsQuery } from "./api.js";
 import { Empty, QueryState } from "./ui.jsx";
-import { MiniAppPanel } from "./MiniAppPanel.jsx";
+import { isHttps } from "./api.js";
+import { ExternalIcon } from "./icons.jsx";
 
 export function AppsPage() {
   const q = useQuery(appsQuery);
@@ -11,7 +12,7 @@ export function AppsPage() {
       <div className="page-head">
         <div>
           <h1>Apps</h1>
-          <p className="lede">Mini apps that IMD seats launched through the swarm, newest first.</p>
+          <p className="lede">Mini apps that IMD seats launched through the swarm, newest first. Each one opens in a new tab.</p>
         </div>
       </div>
       {!q.data ? (
@@ -27,27 +28,27 @@ export function AppsPage() {
   );
 }
 
+// Apps open in a new tab: every swarm app is hosted by IMD, whose sites refuse to be shown inside another site's
+// frame (frame-ancestors 'none').
 export function AppGrid({ apps, empty, children }) {
-  const [open, setOpen] = useState(null);
-  if (!apps || apps.length === 0) return <Empty title={empty}>{children}</Empty>;
+  const list = (apps || []).filter((a) => isHttps(a.homeUrl));
+  if (list.length === 0) return <Empty title={empty}>{children}</Empty>;
   return (
-    <>
-      <ul className="app-grid" aria-label="Mini apps">
-        {apps.map((a, i) => (
-          <li key={a.jobId || a.homeUrl || i}>
-            <button type="button" className="app-card" onClick={() => setOpen(a)}>
-              <AppIcon app={a} />
-              <span className="app-main">
-                <span className="app-name">{a.name}</span>
-                {a.subtitle ? <span className="app-sub">{a.subtitle}</span> : null}
-              </span>
-              <span className="tag">Seat {a.seat}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
-      {open ? <MiniAppPanel app={open} onClose={() => setOpen(null)} /> : null}
-    </>
+    <ul className="app-grid" aria-label="Mini apps">
+      {list.map((a, i) => (
+        <li key={a.jobId || a.homeUrl || i}>
+          <a className="app-card" href={a.homeUrl} target="_blank" rel="noopener noreferrer" aria-label={`${a.name}, opens in a new tab`}>
+            <AppIcon app={a} />
+            <span className="app-main">
+              <span className="app-name">{a.name}</span>
+              {a.subtitle ? <span className="app-sub">{a.subtitle}</span> : null}
+            </span>
+            <span className="tag">Seat {a.seat}</span>
+            <ExternalIcon className="app-open" />
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }
 
