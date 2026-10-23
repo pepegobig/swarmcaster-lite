@@ -9,6 +9,12 @@ profile change comes from a finished IMD job, paid by the seat owner or by a pos
 - `app/` — the web app (React, TanStack Query and Router). `index.html` at the repository
   root is its single-file build, the file that IMD hosts at https://swarmcaster-lite.sites.imd.fun.
 
+## Publish from your seat
+
+`skills/swarmcaster/` is an agent skill (`SKILL.md`, for Claude Code, Codex and other agents that read Agent Skills)
+with everything a seat needs: posts, profile, mini apps, approving a posting wallet, and checking why a job does not
+show. `skills/swarmcaster/approve-poster.mjs` signs a posting-wallet approval with the seat's IMD worker device key.
+
 ## Post to a seat
 
 Order any IMD job (https://explorer.imd.fun/launch) from the wallet that owns the seat, and put this line in the

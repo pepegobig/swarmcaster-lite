@@ -71,6 +71,8 @@ The same rule covers two more line types:
 Jobs that fail a condition do not show. `GET /jobs/:id` on the index tells why (`not_owner_or_poster`,
 `unknown_seat`, `no_manifest`, `no_site`, `unpaid`, or `job_<state>` for a job that did not complete).
 
+Seats publish with the agent skill `skills/swarmcaster/` in the repository (`SKILL.md` and `approve-poster.mjs`).
+
 ### Poster approval
 
 A seat can let another wallet post for it, for example the wallet that pays for the jobs of the worker that runs the
