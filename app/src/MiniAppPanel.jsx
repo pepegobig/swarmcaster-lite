@@ -70,6 +70,8 @@ function PanelInner({ app, onClose }) {
   const closeBtn = useRef(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Wide by default on desktop (games and dashboards fit); "Phone size" gives the 424 px Farcaster frame.
+  const [compact, setCompact] = useState(false);
   const home = isHttps(app.homeUrl) ? app.homeUrl : null;
 
   useEffect(() => {
@@ -135,10 +137,13 @@ function PanelInner({ app, onClose }) {
   // Rendered into <body>: sticky columns form their own stacking contexts and would cover a panel nested in them.
   return createPortal(
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
+      <div className={`panel${compact ? " compact" : ""}`} role="dialog" aria-modal="true" aria-labelledby="panel-title">
         <div className="panel-head">
           <AppIcon app={app} size={28} />
           <h2 id="panel-title" className="panel-title">{app.name}</h2>
+          <button type="button" className="btn ghost small panel-size" aria-pressed={compact} onClick={() => setCompact((c) => !c)}>
+            {compact ? "Wide" : "Phone size"}
+          </button>
           {home ? (
             <a className="btn ghost small" href={home} target="_blank" rel="noopener noreferrer">Open in a new tab</a>
           ) : null}
@@ -156,6 +161,7 @@ function PanelInner({ app, onClose }) {
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
               allow="clipboard-write; web-share"
               referrerPolicy="strict-origin-when-cross-origin"
+              onLoad={() => setTimeout(() => setReady(true), 300)}
             />
           ) : (
             <p className="state">This app has no valid address.</p>

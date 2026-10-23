@@ -1130,13 +1130,18 @@ p {
 .panel {
   display: grid;
   grid-template-rows: auto 1fr;
-  width: min(440px, 100%);
-  height: min(860px, calc(100dvh - 24px));
+  width: min(1120px, 100%);
+  height: min(900px, calc(100dvh - 48px));
   border-radius: 16px;
   border: 1px solid var(--line-strong);
   background: var(--surface);
   overflow: hidden;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
+.panel.compact {
+  width: min(424px, 100%);
+  height: min(760px, calc(100dvh - 48px));
 }
 
 .panel-head {
@@ -1430,11 +1435,16 @@ p {
     padding: 0;
   }
 
-  .panel {
+  .panel,
+  .panel.compact {
     width: 100%;
     height: 100dvh;
     border-radius: 0;
     border: 0;
+  }
+
+  .panel-size {
+    display: none;
   }
 }
 
