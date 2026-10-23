@@ -15,7 +15,10 @@ import { approvalMessage, decide, isAddress, isDeviceKey, parseJob, pickFiles, p
 const IMD = "https://api.imd.fun";
 const RECORDS_TTL_MS = 10 * 60_000; // IMD caches /seats/records up to 10 minutes
 const SEAT_TTL_MS = 60_000;
-const MAX_JOBS_PER_RUN = 8; // up to 5 reads each; the free plan allows 50 subrequests per invocation
+// Per cron run: 2 list reads, up to MAX_LOOKUPS full job reads, MAX_JOBS_PER_RUN jobs of up to 5 reads each and
+// 3 queued posters of 2 reads each stay under the free plan's 50 subrequests.
+const MAX_JOBS_PER_RUN = 6;
+const MAX_LOOKUPS = 8;
 const IMD_TIMEOUT_MS = 10_000; // page requests
 const SCAN_TIMEOUT_MS = 25_000; // the cron's job search, which IMD answers slowly under load
 const TERMINAL = new Set(["blocked", "failed", "cancelled", "refunded", "expired"]);
@@ -263,17 +266,40 @@ export class SwarmIndex extends DurableObject {
       const last = this.kvGet("lastScan");
       const since = last ? `&since=${encodeURIComponent(new Date(last.at - 15 * 60_000).toISOString())}` : "";
       const list = (await this.imd(`/jobs?q=Swarmcaster&limit=100${since}`, SCAN_TIMEOUT_MS)) || { jobs: [] };
+      let lookups = 0;
       for (const j of list.jobs || []) {
-        const parsed = parseJob(j.objective);
-        if (!parsed) continue;
         const row = this.sql.exec("SELECT status, state FROM jobs WHERE id = ?", j.id).toArray()[0];
         if (row && row.state === j.state && row.status !== "pending") continue;
+        let parsed = parseJob(j.objective);
+        // The job list cuts objectives at about 155 characters ("…"), so a Swarmcaster line further down is only in
+        // the job record itself.
+        if (!parsed && /…\s*$/.test(j.objective || "")) {
+          if (lookups >= MAX_LOOKUPS) continue; // the next run reads it
+          lookups++;
+          const full = await this.imd(`/jobs/${j.id}`);
+          if (!full) continue;
+          parsed = parseJob(full.objective);
+        }
+        if (!parsed) {
+          // Remembered so that the next runs skip it until its state changes.
+          this.sql.exec(
+            "INSERT INTO jobs (id, seat, kind, state, status, reason, created_at, updated_at) VALUES (?, -1, 'none', ?, 'ignored', 'no_line', ?, ?) ON CONFLICT(id) DO UPDATE SET state = excluded.state, updated_at = excluded.updated_at",
+            j.id, j.state, j.createdAt, Date.now(),
+          );
+          continue;
+        }
         const status = j.state === "completed" ? "pending" : TERMINAL.has(j.state) ? "rejected" : "waiting";
         this.sql.exec(
           "INSERT INTO jobs (id, seat, kind, state, status, reason, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET state = excluded.state, status = excluded.status, reason = excluded.reason, updated_at = excluded.updated_at",
           j.id, parsed.seat, parsed.kind, j.state, status, status === "rejected" ? `job_${j.state}` : null, j.createdAt, Date.now(),
         );
       }
+      // App jobs refused for a missing site or manifest are checked again for 24 hours: pinning and naming finish
+      // after the job does.
+      this.sql.exec(
+        "UPDATE jobs SET status = 'pending' WHERE kind = 'app' AND status = 'rejected' AND reason IN ('no_site', 'no_manifest') AND created_at > ?",
+        new Date(Date.now() - 86_400_000).toISOString(),
+      );
       const queue = this.sql.exec("SELECT id FROM jobs WHERE status = 'pending' ORDER BY created_at LIMIT ?", MAX_JOBS_PER_RUN).toArray();
       let media = null; // committed media of jobs without outputs[], read once per run when needed
       for (const { id } of queue) {
@@ -284,6 +310,9 @@ export class SwarmIndex extends DurableObject {
           this.sql.exec("UPDATE jobs SET status = 'rejected', reason = 'no_line', updated_at = ? WHERE id = ?", Date.now(), id);
           continue;
         }
+        // A site is served once IMD pins it ("pinned") and names it under ENS ("named"); until then the job waits.
+        const siteState = job.site && job.site.status;
+        if (siteState && !["pinned", "named", "failed", "held", "taken_down"].includes(siteState)) continue;
         const record = await this.seatRecord(String(parsed.seat));
         const verdict = record ? decide(job.paidBy, record.owner, this.posters(parsed.seat)) : { ok: false, reason: "unknown_seat" };
         const data = { ...parsed };
@@ -297,11 +326,14 @@ export class SwarmIndex extends DurableObject {
             const item = ((media && media.items) || []).find((x) => x.id === `job:${id}`);
             files = pickFiles(((item && item.media) || []).flatMap((m) => m.files || []));
           }
-          const site = job.site && job.site.status === "pinned" && job.site.label ? `https://${job.site.label}.sites.imd.fun` : null;
+          const site = ["pinned", "named"].includes(siteState) && job.site.label ? `https://${job.site.label}.sites.imd.fun` : null;
           if (parsed.kind === "post") Object.assign(data, { files, site, launch: job.launch && job.launch.id ? job.launch : null });
           if (parsed.kind === "profile") data.picture = (files.find((f) => f.type.startsWith("image/")) || {}).url || null;
           if (parsed.kind === "app") {
-            const manifest = site ? await fetch(`${site}/.well-known/farcaster.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null) : null;
+            // The standard place is /.well-known/farcaster.json; IMD site jobs cannot publish dot folders, so an
+            // IMD-hosted app serves the same manifest at /farcaster.json.
+            const read = (path) => fetch(`${site}${path}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+            const manifest = site ? (await read("/.well-known/farcaster.json")) || (await read("/farcaster.json")) : null;
             const app = pickManifest(manifest, site);
             if (!app) Object.assign(verdict, { ok: false, reason: site ? "no_manifest" : "no_site" });
             else Object.assign(data, app, { site });

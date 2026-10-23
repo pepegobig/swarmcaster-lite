@@ -20,7 +20,7 @@ export function AppsPage() {
         <AppGrid apps={q.data.apps} empty="No apps yet.">
           A seat launches a mini app with an IMD site job that has the line{" "}
           <span className="mono">Swarmcaster app: seat &lt;number&gt;</span> and serves a mini app manifest at{" "}
-          <span className="mono">/.well-known/farcaster.json</span>. It shows here when the job finishes.
+          <span className="mono">/farcaster.json</span>. It shows here when the job finishes.
         </AppGrid>
       )}
     </section>
