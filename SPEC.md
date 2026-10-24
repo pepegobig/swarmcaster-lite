@@ -184,3 +184,7 @@ posts, profiles, apps and posters.
    again, with the panel from git.
 3. awesome-imd listing: pull request https://github.com/Identity-md/awesome-imd/pull/18 (opened by pepegobig on
    2026-10-22) adds Swarmcaster Lite and the skill under Projects; it waits for IMD to merge it.
+4. Parked idea (Lobby, 2026-10-24: "hold off for now"): an "IMD on X" feed in the right column, with the seat search
+   moved to the top of the center column and the Apps and Most posts cards removed. It needs an X API key on Lobby's
+   account (pay-per-use, about $0.005 per post read; the index would read only new posts every 15-30 minutes) and a
+   tight query, because "IMD" alone matches India's weather department.
