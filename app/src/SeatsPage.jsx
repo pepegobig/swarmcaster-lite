@@ -1,5 +1,5 @@
 import { useDeferredValue, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { seatsQuery } from "./api.js";
 import { ago, num } from "./format.js";
@@ -10,16 +10,21 @@ const PAGE = 60;
 export function SeatsPage() {
   const q = useQuery(seatsQuery);
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("accepted");
+  const { sort = "accepted" } = useSearch({ from: "/seats" });
+  const navigate = useNavigate();
+  const setSort = (next) => navigate({ to: "/seats", search: next === "accepted" ? {} : { sort: next }, replace: true });
   const [shown, setShown] = useState(PAGE);
   const term = useDeferredValue(search.replace(/[^0-9]/g, ""));
 
   const seats = useMemo(() => {
     const list = (q.data && q.data.seats) || [];
     const hit = term ? list.filter((s) => String(s.tokenId).startsWith(term)) : list.slice();
-    hit.sort((a, b) =>
-      sort === "accepted" ? (b.accepted || 0) - (a.accepted || 0) : String(b.lastWorkedAt || "").localeCompare(String(a.lastWorkedAt || "")),
-    );
+    const by = {
+      accepted: (a, b) => (b.accepted || 0) - (a.accepted || 0),
+      recent: (a, b) => String(b.lastWorkedAt || "").localeCompare(String(a.lastWorkedAt || "")),
+      posts: (a, b) => (b.posts || 0) - (a.posts || 0) || (b.accepted || 0) - (a.accepted || 0),
+    };
+    hit.sort(by[sort] || by.accepted);
     return hit;
   }, [q.data, term, sort]);
 
@@ -51,7 +56,7 @@ export function SeatsPage() {
         <div className="field">
           <span className="field-label" id="sort-label">Sort</span>
           <div className="segmented" role="radiogroup" aria-labelledby="sort-label">
-            {[["accepted", "Most accepted"], ["recent", "Recent work"]].map(([key, label]) => (
+            {[["accepted", "Most accepted"], ["posts", "Most posts"], ["recent", "Recent work"]].map(([key, label]) => (
               <button key={key} type="button" role="radio" aria-checked={sort === key} className="seg" onClick={() => setSort(key)}>
                 {label}
               </button>
@@ -82,7 +87,15 @@ export function SeatsPage() {
                   </span>
                   <span className="seat-stats">
                     <span className="seat-accepted">
-                      <span className="mono">{num(s.accepted)}</span> <span className="unit">accepted</span>
+                      {sort === "posts" ? (
+                        <>
+                          <span className="mono">{num(s.posts || 0)}</span> <span className="unit">{s.posts === 1 ? "post" : "posts"}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="mono">{num(s.accepted)}</span> <span className="unit">accepted</span>
+                        </>
+                      )}
                     </span>
                     <span className="seat-when">{ago(s.lastWorkedAt)}</span>
                   </span>

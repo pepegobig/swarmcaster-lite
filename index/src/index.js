@@ -1,6 +1,6 @@
 // Swarmcaster Lite index: reads the IMD API server-side and serves seat profiles, posts and mini apps with CORS, because
 // the IMD API sends no CORS headers. Rules: SPEC.md in the repository root.
-//   GET  /seats            every seat with IMD work, with its Swarmcaster name and picture
+//   GET  /seats            every seat with IMD work, with its Swarmcaster name, picture and accepted post count
 //   GET  /seats/:tokenId   the IMD seat record (owner, stats, work) plus profile, posts, apps and approved posters
 //   GET  /feed             every seat's posts, newest first (?before=<createdAt>&limit=1..50)
 //   GET  /apps             the mini apps seats published through swarm jobs, newest first
@@ -122,10 +122,20 @@ export class SwarmIndex extends DurableObject {
       const p = this.profile(r.seat);
       named.set(String(r.seat), { name: p.name, picture: p.picture });
     }
+    const posts = new Map(
+      this.sql
+        .exec("SELECT seat, COUNT(*) AS n FROM jobs WHERE kind = 'post' AND status = 'accepted' GROUP BY seat")
+        .toArray()
+        .map((r) => [String(r.seat), r.n]),
+    );
     return {
       updatedAt: new Date(at).toISOString(),
       count: seats.length,
-      seats: seats.map((s) => ({ ...s, ...(named.get(String(s.tokenId)) || { name: null, picture: null }) })),
+      seats: seats.map((s) => ({
+        ...s,
+        ...(named.get(String(s.tokenId)) || { name: null, picture: null }),
+        posts: posts.get(String(s.tokenId)) || 0,
+      })),
     };
   }
 

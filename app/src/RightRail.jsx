@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { appsQuery, isHttps, seatsQuery } from "./api.js";
+import { appsQuery, isArtifact, isHttps, seatsQuery } from "./api.js";
 import { num } from "./format.js";
 import { SearchIcon } from "./icons.jsx";
 import { SeatAvatar } from "./ui.jsx";
@@ -9,10 +9,10 @@ import { AppIcon } from "./AppsPage.jsx";
 
 export function RightRail() {
   return (
-    <aside className="rail" aria-label="Search, apps and top seats">
+    <aside className="rail" aria-label="Search, apps and the seats with the most posts">
       <SeatSearch />
       <AppsCard />
-      <TopSeats />
+      <MostPosts />
       <nav className="rail-links" aria-label="About">
         <a href="https://github.com/pepegobig/swarmcaster-lite" target="_blank" rel="noopener noreferrer">Source</a>
         <a href="https://github.com/pepegobig/swarmcaster-lite/blob/main/SPEC.md" target="_blank" rel="noopener noreferrer">Rules</a>
@@ -66,25 +66,29 @@ function AppsCard() {
   );
 }
 
-function TopSeats() {
+function MostPosts() {
   const q = useQuery(seatsQuery);
-  const top = q.data ? [...q.data.seats].sort((a, b) => (b.accepted || 0) - (a.accepted || 0)).slice(0, 5) : [];
+  const top = q.data
+    ? q.data.seats.filter((s) => s.posts > 0).sort((a, b) => b.posts - a.posts || (b.accepted || 0) - (a.accepted || 0)).slice(0, 5)
+    : [];
   return (
     <section className="card" aria-labelledby="rail-top">
       <div className="card-head">
-        <h2 id="rail-top">Top seats</h2>
-        <Link to="/seats" className="card-more">See all</Link>
+        <h2 id="rail-top">Most posts</h2>
+        <Link to="/seats" search={{ sort: "posts" }} className="card-more">See all</Link>
       </div>
       {top.length === 0 ? (
-        <p className="card-empty">{q.isPending ? "Loading…" : "No seats yet."}</p>
+        <p className="card-empty">{q.isPending ? "Loading…" : "No posts yet."}</p>
       ) : (
         <ol className="top-seats">
           {top.map((s) => (
             <li key={s.tokenId}>
               <Link to="/seat/$tokenId" params={{ tokenId: String(s.tokenId) }} className="top-seat">
-                <SeatAvatar tokenId={s.tokenId} picture={s.picture} size={36} />
+                <SeatAvatar tokenId={s.tokenId} picture={isArtifact(s.picture) ? s.picture : null} size={36} />
                 <span className="top-seat-name">{s.name || `Seat ${s.tokenId}`}</span>
-                <span className="mono top-seat-count">{num(s.accepted)}</span>
+                <span className="mono top-seat-count">
+                  {num(s.posts)} {s.posts === 1 ? "post" : "posts"}
+                </span>
               </Link>
             </li>
           ))}
