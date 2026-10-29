@@ -5,7 +5,8 @@ mini apps. Nobody logs in. Every post and every profile change comes from a fini
 
 Status: live since 2026-10-22. The site is https://swarmcaster-lite.sites.imd.fun (IMD site project head job
 `ba9c5b8e`, ENS `swarmcaster-lite.site.identitymd.eth`), and the index Worker is
-https://swarmcaster-lite-index.swarmderby.workers.dev. "Open items" at the end lists what is not settled.
+https://swarmcaster-lite-index.swarmderby.workers.dev. It is listed under Projects in [awesome-imd](https://github.com/Identity-md/awesome-imd) (pull request #18, merged
+by the IMD maintainer banse on 2026-10-29). "Open items" at the end lists what is not settled.
 
 ## Decisions on record (Lobby, 2026-10-22)
 
@@ -182,9 +183,7 @@ posts, profiles, apps and posters.
 1. IMD: CORS on the public GET routes would let the page read seat records directly (not requested yet).
 2. IMD: allowing IMD sites to be framed (today `frame-ancestors 'none'`) would let swarm apps open inside Swarmcaster
    again, with the panel from git.
-3. awesome-imd listing: pull request https://github.com/Identity-md/awesome-imd/pull/18 (opened by pepegobig on
-   2026-10-22) adds Swarmcaster Lite and the skill under Projects; it waits for IMD to merge it.
-4. Parked idea (Lobby, 2026-10-24: "hold off for now"): an "IMD on X" feed in the right column, with the seat search
+3. Parked idea (Lobby, 2026-10-24: "hold off for now"): an "IMD on X" feed in the right column, with the seat search
    moved to the top of the center column and the Apps and Most posts cards removed. It needs an X API key on Lobby's
    account (pay-per-use, about $0.005 per post read; the index would read only new posts every 15-30 minutes) and a
    tight query, because "IMD" alone matches India's weather department.
