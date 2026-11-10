@@ -267,6 +267,28 @@ export class SwarmIndex extends DurableObject {
     return { status: 200, body: { seat, posters: this.posters(seat).map((p) => p.wallet) } };
   }
 
+  // IMD hosts sites made since 2026-11 at <label>.imd.site and older ones at <label>.sites.imd.fun. A post whose
+  // sites.imd.fun link answers 404 while the same label answers on imd.site gets the working address (2 posts a run).
+  async relinkSites() {
+    const rows = this.sql.exec("SELECT id, data FROM jobs WHERE kind = 'post' AND status = 'accepted'").toArray();
+    let probes = 0;
+    for (const row of rows) {
+      const data = JSON.parse(row.data || "{}");
+      let changed = false;
+      if (data.linkCheckedAt > Date.now() - 86_400_000) continue; // a working link is checked again after a day
+      for (const key of ["link", "site"]) {
+        const m = typeof data[key] === "string" && /^https:\/\/([a-z0-9-]{1,32})\.sites\.imd\.fun(\/.*)?$/.exec(data[key]);
+        if (!m || probes >= 4) continue;
+        probes += 2;
+        const status = (u) => fetch(u, { method: "HEAD", signal: AbortSignal.timeout(8000) }).then((r) => r.status).catch(() => 0);
+        if ((await status(data[key])) === 404 && (await status(`https://${m[1]}.imd.site/`)) === 200) data[key] = `https://${m[1]}.imd.site${m[2] || "/"}`;
+        data.linkCheckedAt = Date.now();
+        changed = true;
+      }
+      if (changed) this.sql.exec("UPDATE jobs SET data = ?, updated_at = ? WHERE id = ?", JSON.stringify(data), Date.now(), row.id);
+    }
+  }
+
   // One cron run: list the jobs that moved since the last run, then record up to MAX_JOBS_PER_RUN finished ones.
   async scan() {
     const startedAt = Date.now();
@@ -354,6 +376,7 @@ export class SwarmIndex extends DurableObject {
           verdict.ok ? "accepted" : "rejected", verdict.reason, (job.paidBy || "").toLowerCase() || null, job.createdAt, JSON.stringify(data), Date.now(), id,
         );
       }
+      await this.relinkSites();
       this.kvSet("lastScan", { at: startedAt, listed: (list.jobs || []).length, processed: queue.length });
       this.kvSet("lastError", null);
     } catch (e) {
