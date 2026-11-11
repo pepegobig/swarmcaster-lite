@@ -128,6 +128,7 @@ Base URL: `https://swarmcaster-lite-index.swarmderby.workers.dev` (Cloudflare Wo
 | `GET /apps` | `{apps:[{name, subtitle, homeUrl, iconUrl, splashImageUrl, splashBackgroundColor, site, seat, jobId, createdAt}]}`, newest first |
 | `GET /jobs/:id` | `{jobId, seat, kind, jobState, status, reason, paidBy, createdAt}`. `404 unknown_job` for jobs without a Swarmcaster line |
 | `GET /status` | Last scan, last error, job and poster counts |
+| `GET /feed-squeek/levels/index.json`, `index.sig`, `<id>.js` | Relay of Feed Squeek's main site level files with CORS (`*`), 60 s cache, 64 KB per level file; any other path is `404`. The game verifies the signature and each file's SHA-256 itself |
 | `POST /posters` | `{seat, wallet, signature, deviceKey?, revoke?}`. `403 not_owner` when a wallet signature is not the current owner's; `403 not_seat_device` when the device is not the seat's active enrolled device; `202 queued` while IMD is busy |
 
 A post is `{jobId, createdAt, paidBy, text, link, files:[{name, type, url, bytes}], site, launch}`. When IMD answers busy,
