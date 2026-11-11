@@ -387,6 +387,26 @@ export class SwarmIndex extends DurableObject {
 
 const index = (env) => env.INDEX.get(env.INDEX.idFromName("global"));
 
+// Feed Squeek: a read-only relay of the main game site's level list and level files, with CORS. The IMD sites
+// gateway sends no CORS headers, so the game's other copy (feed-squeek-2638.imd.site, its Squeekchain listing)
+// reads the main site's swarm levels through here and shows the same levels. Only the level list, its signature
+// (index.sig) and level files are relayed; the game verifies the signature and each file's SHA-256 itself.
+const FEED_SQUEEK_LEVELS = "https://feed-squeek.imd.site/levels/";
+const FEED_SQUEEK_FILE = /^\/feed-squeek\/levels\/(index\.json|index\.sig|[a-z0-9-]{3,48}\.js)$/;
+async function feedSqueekFile(name) {
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Cache-Control": "public, max-age=60",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Type": name === "index.json" ? "application/json" : "text/plain; charset=utf-8",
+  };
+  const r = await fetch(FEED_SQUEEK_LEVELS + name, { cf: { cacheTtl: 60, cacheEverything: true }, signal: AbortSignal.timeout(10000) });
+  if (!r.ok) return new Response(JSON.stringify({ error: r.status === 404 ? "not_found" : "upstream" }), { status: r.status === 404 ? 404 : 502, headers });
+  const body = await r.arrayBuffer();
+  if (body.byteLength > (name === "index.json" ? 256 : 64) * 1024) return new Response(JSON.stringify({ error: "too_large" }), { status: 502, headers });
+  return new Response(body, { headers });
+}
+
 function respond(body, status = 200, maxAge = 0) {
   return new Response(status === 204 ? null : JSON.stringify(body), {
     status,
@@ -426,8 +446,10 @@ export default {
           const body = await index(env).getJob(j[1]);
           return body ? respond(body) : respond({ error: "unknown_job" }, 404);
         }
+        const fs = FEED_SQUEEK_FILE.exec(path);
+        if (fs) return await feedSqueekFile(fs[1]);
         if (path === "/status") return respond(await index(env).getStatus());
-        if (path === "/") return respond({ name: "Swarmcaster Lite index", routes: ["/feed", "/seats", "/seats/:tokenId", "/apps", "/jobs/:id", "/status", "POST /posters"] });
+        if (path === "/") return respond({ name: "Swarmcaster Lite index", routes: ["/feed", "/seats", "/seats/:tokenId", "/apps", "/jobs/:id", "/status", "POST /posters", "/feed-squeek/levels/index.json", "/feed-squeek/levels/:id.js"] });
       }
       if (request.method === "POST" && path === "/posters") {
         let b;
